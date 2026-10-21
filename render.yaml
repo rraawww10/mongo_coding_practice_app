@@ -1,0 +1,27 @@
+# Render Blueprint: one web service serving the API and the built UI.
+# Secrets marked sync:false are entered in the Render dashboard on first deploy.
+services:
+  - type: web
+    name: mongo-practice-platform
+    runtime: node
+    plan: free
+    buildCommand: npm run install:all && npm run build
+    startCommand: npm run start:backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "20"
+      - key: MONGODB_ADMIN_URI
+        sync: false
+      - key: INSTRUCTOR_EMAIL
+        sync: false
+      - key: INSTRUCTOR_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CREDENTIAL_ENCRYPTION_KEY
+        sync: false
+      - key: WORKSPACE_DB_USERS
+        value: "false"
