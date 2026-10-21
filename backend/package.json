@@ -1,0 +1,40 @@
+{
+  "name": "mongodb-practice-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MongoDB Coding Practice Platform - API server",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "mongo:local": "node scripts/local-mongo.js",
+    "seed": "node scripts/seed.js",
+    "reset-db": "node scripts/reset.js",
+    "health": "node scripts/health.js",
+    "test": "node ../scripts/run-all-tests.js --only unit,integration,e2e",
+    "test:unit": "jest --selectProjects unit",
+    "test:integration": "jest --selectProjects integration --runInBand",
+    "test:e2e": "jest --selectProjects e2e --runInBand",
+    "test:coverage": "jest --runInBand --coverage",
+    "setup:env": "node scripts/setup-env.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.7.0",
+    "mongodb-connection-string-url": "^7.0.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "jest": "^30.5.2",
+    "mongodb-memory-server": "^11.3.0",
+    "supertest": "^7.3.1"
+  }
+}

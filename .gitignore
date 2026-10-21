@@ -1,0 +1,15 @@
+# dependencies
+node_modules/
+
+# secrets / environment
+.env
+.env.*
+!.env.example
+
+# local data, builds and reports
+backend/.mongo-data/
+frontend/dist/
+coverage/
+test-reports/
+*.log
+.DS_Store

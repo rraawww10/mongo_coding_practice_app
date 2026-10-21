@@ -1,0 +1,27 @@
+{
+  "name": "mongodb-practice-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MongoDB coding practice platform (React + Express + MongoDB) with a local simulation and Atlas support",
+  "scripts": {
+    "setup:env": "npm --prefix backend run setup:env",
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "mongo:local": "npm --prefix backend run mongo:local",
+    "seed": "npm --prefix backend run seed",
+    "reset-db": "npm --prefix backend run reset-db",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "start:backend": "npm --prefix backend start",
+    "build": "npm --prefix frontend run build",
+    "health": "npm --prefix backend run health",
+    "test": "node scripts/run-all-tests.js",
+    "test:unit": "node scripts/run-all-tests.js --only unit",
+    "test:integration": "node scripts/run-all-tests.js --only integration",
+    "test:e2e": "node scripts/run-all-tests.js --only e2e",
+    "test:frontend": "node scripts/run-all-tests.js --only frontend",
+    "test:coverage": "node scripts/run-all-tests.js --coverage"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
