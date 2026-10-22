@@ -1,16 +1,60 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { get, post } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import CodeEditor from '../components/CodeEditor.jsx';
 import CollectionsDrawer from '../components/CollectionsDrawer.jsx';
 import JsonView from '../components/JsonView.jsx';
-import MongoDocuments from '../components/MongoDocuments.jsx';
+import { PagedDocuments } from '../components/MongoDocuments.jsx';
 import QuestionList from '../components/QuestionList.jsx';
 import { Alert, ErrorAlert, Spinner, useApi } from '../components/ui.jsx';
 
 const COLLECTIONS = ['students', 'products', 'orders', 'employees', 'courses'];
-const starter = (collection) => `db.${collection}.find({})`;
+const SPLIT_KEY = 'mp_results_pct';
+const SPLIT_DEFAULT = 40;
+const clampSplit = (pct) => Math.min(80, Math.max(15, pct));
+
+/** Height of the results panel as a % of the code column, dragged by the splitter and remembered per browser. */
+function useResultsSplit(containerRef) {
+  const [pct, setPct] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem(SPLIT_KEY));
+      return saved ? clampSplit(saved) : SPLIT_DEFAULT;
+    } catch {
+      return SPLIT_DEFAULT;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(SPLIT_KEY, String(pct));
+    } catch {
+      /* storage unavailable: the split just isn't remembered */
+    }
+  }, [pct]);
+
+  const onPointerDown = (e) => {
+    const box = containerRef.current?.getBoundingClientRect();
+    if (!box) return;
+    e.preventDefault();
+    const move = (ev) => setPct(clampSplit(((box.bottom - ev.clientY) / box.height) * 100));
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      document.body.classList.remove('resizing');
+    };
+    document.body.classList.add('resizing');
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowUp') setPct((p) => clampSplit(p + 5));
+    else if (e.key === 'ArrowDown') setPct((p) => clampSplit(p - 5));
+    else return;
+    e.preventDefault();
+  };
+  const reset = () => setPct(SPLIT_DEFAULT);
+  return { pct, onPointerDown, onKeyDown, reset };
+}
 
 function ResultBody({ status, result, error }) {
   if (status === 'idle') return <p className="muted m0">Run your query to see the documents it returns.</p>;
@@ -39,7 +83,7 @@ function ResultBody({ status, result, error }) {
     return (
       <>
         {result.truncated && <Alert kind="warn">Output limited to the first {result.count} documents. Add a filter or limit().</Alert>}
-        <MongoDocuments documents={result.documents} />
+        <PagedDocuments documents={result.documents} />
       </>
     );
   }
@@ -86,7 +130,7 @@ function TestBody({ submission, question }) {
           <summary>
             Your output ({r.output.count} result{r.output.count === 1 ? '' : 's'})
           </summary>
-          {r.output.documents ? <MongoDocuments documents={r.output.documents} /> : <JsonView value={r.output.value} maxHeight={260} />}
+          {r.output.documents ? <PagedDocuments documents={r.output.documents} /> : <JsonView value={r.output.value} maxHeight={260} />}
         </details>
       )}
     </div>
@@ -103,7 +147,7 @@ export default function PracticePage() {
   const ws = useApi(() => (disabled ? get('/api/workspace') : post('/api/workspace/ensure')), [disabled]);
   const qs = useApi(() => get('/api/questions'));
 
-  const [query, setQuery] = useState(starter('students'));
+  const [query, setQuery] = useState('');
   const [exec, setExec] = useState({ status: 'idle' });
   const [submission, setSubmission] = useState(null);
   const [tab, setTab] = useState('output');
@@ -112,13 +156,15 @@ export default function PracticePage() {
   const [fontSize, setFontSize] = useState(15);
   const [resetCount, setResetCount] = useState(0);
   const [busy, setBusy] = useState(null);
+  const codePane = useRef(null);
+  const split = useResultsSplit(codePane);
 
   const questions = qs.data?.questions || [];
   const question = useMemo(() => questions.find((q) => q.questionId === questionId) || null, [questions, questionId]);
   const collection = question?.collection || 'students';
 
   useEffect(() => {
-    setQuery(starter(question?.collection || 'students'));
+    setQuery('');
     setExec({ status: 'idle' });
     setSubmission(null);
     setTab('output');
@@ -136,7 +182,7 @@ export default function PracticePage() {
   }, [query]);
 
   const submit = async () => {
-    if (!question) return;
+    if (!question || !query.trim()) return;
     setSubmission({ loading: true });
     setTab('tests');
     try {
@@ -148,9 +194,9 @@ export default function PracticePage() {
     }
   };
 
-  /** Back to the starter query for this question; the workspace data is left alone. */
+  /** Clears the editor; the workspace data is left alone. */
   const resetCode = () => {
-    setQuery(starter(collection));
+    setQuery('');
     setExec({ status: 'idle' });
   };
 
@@ -174,7 +220,7 @@ export default function PracticePage() {
   const conn = ws.data.connection;
   const ready = ws.data.workspace.status === 'ready' && ws.data.workspace.mode === conn.mode;
   const counts = Object.fromEntries((ws.data.collections || []).map((c) => [c.name, c.count]));
-  const canRun = ready && !disabled && exec.status !== 'running';
+  const canRun = ready && !disabled && exec.status !== 'running' && Boolean(query.trim());
 
   return (
     <div className={`ide ${descOpen ? '' : 'desc-collapsed'}`}>
@@ -290,7 +336,7 @@ export default function PracticePage() {
             </button>
           )}
 
-          <section className="pane pane-code">
+          <section className="pane pane-code" ref={codePane}>
             <div className="code-card">
               <div className="code-head">
                 <span className="code-file">
@@ -312,7 +358,7 @@ export default function PracticePage() {
               </div>
 
               <div className="code-area">
-                <CodeEditor value={query} onChange={setQuery} onRun={run} disabled={disabled} fontSize={fontSize} />
+                <CodeEditor value={query} onChange={setQuery} onRun={run} disabled={disabled} fontSize={fontSize} placeholder="Write your query here" />
                 <CollectionsDrawer
                   key={resetCount}
                   open={drawer}
@@ -328,7 +374,7 @@ export default function PracticePage() {
                 <button type="button" className="btn btn-ghost-dark" onClick={resetDb} disabled={!ready || disabled || busy === 'reset'}>
                   <span aria-hidden="true">⛁</span> {busy === 'reset' ? 'Resetting…' : 'Reset DB'}
                 </button>
-                <button type="button" className="btn btn-ghost-dark" onClick={resetCode} disabled={query === starter(collection)}>
+                <button type="button" className="btn btn-ghost-dark" onClick={resetCode} disabled={!query}>
                   <span aria-hidden="true">↺</span> Reset Code
                 </button>
                 <span className="spacer" />
@@ -339,13 +385,28 @@ export default function PracticePage() {
                 <button type="button" className="btn btn-run" onClick={run} disabled={!canRun}>
                   <span aria-hidden="true">▶</span> Run
                 </button>
-                <button type="button" className="btn btn-submit" onClick={submit} disabled={!question || !ready || disabled || submission?.loading}>
+                <button type="button" className="btn btn-submit" onClick={submit} disabled={!question || !query.trim() || !ready || disabled || submission?.loading}>
                   {submission?.loading ? 'Grading…' : 'Submit'}
                 </button>
               </div>
             </div>
 
-            <div className="results-card">
+            <div
+              className="splitter"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize query results"
+              aria-valuenow={Math.round(split.pct)}
+              aria-valuemin={15}
+              aria-valuemax={80}
+              tabIndex={0}
+              title="Drag to resize · double-click to reset"
+              onPointerDown={split.onPointerDown}
+              onKeyDown={split.onKeyDown}
+              onDoubleClick={split.reset}
+            />
+
+            <div className="results-card" style={{ flexBasis: `${split.pct}%` }}>
               <div className="results-head">
                 <button type="button" className={`pane-tab ${tab === 'output' ? 'active' : ''}`} onClick={() => setTab('output')}>
                   Query Results

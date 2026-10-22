@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { screen, within } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PracticePage from '../pages/PracticePage.jsx';
 import { mockFetch, renderAt } from './helpers.jsx';
@@ -33,41 +33,85 @@ const docs = (documents, over = {}) => ({
   body: { ok: true, operation: 'find', collection: 'students', resultType: 'documents', documents, count: documents.length, truncated: false, durationMs: 4, ...over },
 });
 
+const typeQuery = async (query = 'db.students.find({})') => {
+  fireEvent.change(await screen.findByLabelText('MongoDB query editor'), { target: { value: query } });
+};
+const typeAndRun = async (query) => {
+  await typeQuery(query);
+  await userEvent.click(screen.getByRole('button', { name: /Run/ }));
+};
+
 describe('Coding practice IDE', () => {
+  test('starts with an empty editor and Run disabled until a query is typed', async () => {
+    setup(() => docs([]));
+    renderAt('/practice', <PracticePage />);
+    const editor = await screen.findByLabelText('MongoDB query editor');
+    expect(editor).toHaveValue('');
+    expect(screen.getByRole('button', { name: /Run/ })).toBeDisabled();
+    await typeQuery();
+    expect(screen.getByRole('button', { name: /Run/ })).toBeEnabled();
+  });
+
   test('bootstraps the workspace, runs a query and shows the JSON output', async () => {
     const { calls } = setup(() => docs([{ name: 'Diya' }]));
     renderAt('/practice', <PracticePage />);
-    await userEvent.click(await screen.findByRole('button', { name: /Run/ }));
+    await typeAndRun();
     expect(screen.getByTestId('mongo-documents')).toHaveTextContent('"Diya"');
     expect(calls.some((c) => c.path === '/api/workspace/ensure' && c.method === 'POST')).toBe(true);
     expect(calls.find((c) => c.path === '/api/query/execute').body).toEqual({ query: 'db.students.find({})' });
   });
 
+  test('pages large results 20 documents at a time', async () => {
+    setup(() => docs(Array.from({ length: 45 }, (_, i) => ({ n: i + 1 }))));
+    renderAt('/practice', <PracticePage />);
+    await typeAndRun();
+    const cards = () => screen.getByTestId('mongo-documents').querySelectorAll('.doc-card');
+    expect(cards()).toHaveLength(20);
+    expect(screen.getAllByTestId('pager-range')[0]).toHaveTextContent('1 – 20 of 45');
+    await userEvent.click(screen.getAllByRole('button', { name: /Next/ })[0]);
+    await userEvent.click(screen.getAllByRole('button', { name: /Next/ })[0]);
+    expect(cards()).toHaveLength(5);
+    expect(screen.getAllByTestId('pager-range')[0]).toHaveTextContent('41 – 45 of 45');
+    expect(screen.getAllByRole('button', { name: /Next/ })[0]).toBeDisabled();
+  });
+
+  test('the results panel can be resized from the keyboard and reset by double-click', async () => {
+    setup(() => docs([]));
+    renderAt('/practice', <PracticePage />);
+    const handle = await screen.findByRole('separator', { name: 'Resize query results' });
+    expect(handle).toHaveAttribute('aria-valuenow', '40');
+    fireEvent.keyDown(handle, { key: 'ArrowUp' });
+    fireEvent.keyDown(handle, { key: 'ArrowUp' });
+    expect(handle).toHaveAttribute('aria-valuenow', '50');
+    fireEvent.doubleClick(handle);
+    expect(handle).toHaveAttribute('aria-valuenow', '40');
+  });
+
   test('shows a clear empty-result state', async () => {
     setup(() => docs([]));
     renderAt('/practice', <PracticePage />);
-    await userEvent.click(await screen.findByRole('button', { name: /Run/ }));
+    await typeAndRun();
     expect(await screen.findByTestId('empty-result')).toHaveTextContent('0 documents');
   });
 
   test('shows query errors in the error panel with location', async () => {
     setup(() => ({ status: 400, body: { error: { code: 'INVALID_SYNTAX', message: "Expected '}'", line: 1, column: 22 } } }));
     renderAt('/practice', <PracticePage />);
-    await userEvent.click(await screen.findByRole('button', { name: /Run/ }));
+    await typeAndRun();
     const panel = await screen.findByTestId('error-panel');
     expect(panel).toHaveTextContent('INVALID_SYNTAX');
     expect(panel).toHaveTextContent('Line 1, column 22');
   });
 
-  test('opening a question loads its starter query, which can be restored', async () => {
+  test('opening a question starts with an empty editor, and Reset Code clears it again', async () => {
     setup(() => docs([]));
     renderAt('/practice/Q001', <PracticePage />, '/practice/:questionId');
     const editor = await screen.findByLabelText('MongoDB query editor');
-    expect(editor).toHaveValue('db.students.find({})');
-    await userEvent.clear(editor);
+    expect(editor).toHaveValue('');
+    expect(editor).toHaveAttribute('placeholder', 'Write your query here');
     await userEvent.type(editor, 'db.students.countDocuments({{}})');
     await userEvent.click(screen.getByRole('button', { name: 'Reset Code' }));
-    expect(editor).toHaveValue('db.students.find({})');
+    expect(editor).toHaveValue('');
   });
 
   test('submits a solution and displays pass/fail per test case', async () => {
@@ -80,6 +124,8 @@ describe('Coding practice IDE', () => {
     });
     renderAt('/practice/Q001', <PracticePage />, '/practice/:questionId');
     expect(await screen.findByText('Find all active students', { selector: 'h1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
+    await typeQuery('db.students.find({ isActive: true })');
     await userEvent.click(screen.getByRole('button', { name: 'Submit' }));
     expect(await screen.findByTestId('submission-result')).toHaveTextContent('✓ Passed · 10/10 points · attempt #2');
   });

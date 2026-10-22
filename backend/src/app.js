@@ -1,5 +1,7 @@
 'use strict';
 
+const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -88,6 +90,13 @@ function createApp(services) {
   app.use('/api', requireAuth, studentRoutes(services));
 
   app.use('/api', (_req, _res, next) => next(notFound('ROUTE_NOT_FOUND', 'API route not found.')));
+
+  // Single-service deployments: serve the built UI (frontend/dist) from the same origin.
+  const uiDir = path.join(__dirname, '..', '..', 'frontend', 'dist');
+  if (fs.existsSync(path.join(uiDir, 'index.html'))) {
+    app.use(express.static(uiDir));
+    app.get(/^(?!\/api\/).*/, (_req, res) => res.sendFile(path.join(uiDir, 'index.html')));
+  }
   app.use(errorHandler);
   return app;
 }

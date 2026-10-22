@@ -54,6 +54,29 @@ export function Stat({ label, value, hint }) {
   );
 }
 
+export const PAGE_SIZE = 20;
+
+/** "1 – 20 of 240" with Previous / Next. `page` is zero-based; renders nothing for a single page. */
+export function Pagination({ page, pageSize = PAGE_SIZE, total, onChange }) {
+  const pages = Math.ceil(total / pageSize);
+  if (pages <= 1) return null;
+  const from = page * pageSize + 1;
+  const to = Math.min(total, from + pageSize - 1);
+  return (
+    <nav className="pager" aria-label="Pagination">
+      <button type="button" className="btn btn-sm btn-ghost-dark" onClick={() => onChange(page - 1)} disabled={page === 0}>
+        ‹ Prev
+      </button>
+      <span className="muted small" data-testid="pager-range">
+        {from} – {to} of {total}
+      </span>
+      <button type="button" className="btn btn-sm btn-ghost-dark" onClick={() => onChange(page + 1)} disabled={page >= pages - 1}>
+        Next ›
+      </button>
+    </nav>
+  );
+}
+
 /** Small data-loading hook: { data, error, loading, reload }. */
 export function useApi(loader, deps = []) {
   const [state, setState] = useState({ data: null, error: null, loading: true });

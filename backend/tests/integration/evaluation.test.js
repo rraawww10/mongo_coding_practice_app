@@ -149,6 +149,18 @@ describe('E. Evaluation', () => {
     expect(await ctx.services.mongo.collection('attempts').countDocuments({ userId: (await ctx.services.mongo.collection('users').findOne({ email: s.email }))._id })).toBe(2);
   });
 
+  test('grading sandboxes fit the 38-byte database name limit of Atlas shared tiers', async () => {
+    const { MAX_DB_NAME_LENGTH } = require('../../src/provisioning/provisioningService');
+    const sandbox = await ctx.services.provisioning.createSandbox('sub_6ad9d92618ff4f4250d91f6f_Q001');
+    try {
+      expect(Buffer.byteLength(sandbox.db.databaseName)).toBeLessThanOrEqual(MAX_DB_NAME_LENGTH);
+      expect(sandbox.db.databaseName).toBe(`${ctx.services.config.workspaceDbPrefix}eval_${sandbox.db.databaseName.slice(-16)}`);
+      expect(sandbox.db.databaseName).not.toContain('6ad9d92618ff4f4250d91f6f');
+    } finally {
+      await sandbox.drop();
+    }
+  });
+
   test("grading runs in a sandbox and never modifies the student's workspace", async () => {
     const s = await ctx.readyStudent('Sandbox');
     const res = await submit(s, 'Q025', 'db.orders.deleteMany({ status: "cancelled" })');

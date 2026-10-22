@@ -203,7 +203,7 @@ matter most:
 | `CREDENTIAL_ENCRYPTION_KEY` | *(required)* | AES-256-GCM key for stored Atlas URIs, 64 hex characters |
 | `BCRYPT_ROUNDS` | `10` | Password hashing cost |
 | `INSTRUCTOR_EMAIL` / `INSTRUCTOR_PASSWORD` | *(required)* | Admin account created by `npm run seed` |
-| `QUERY_MAX_RESULTS` | `100` | Result cap per query |
+| `QUERY_MAX_RESULTS` | `500` | Result cap per query (the IDE pages results 20 at a time) |
 | `QUERY_TIMEOUT_MS` | `3000` | Query timeout |
 | `QUERY_MAX_LENGTH` | `4000` | Maximum query text length |
 | `REQUEST_BODY_LIMIT` | `16kb` | Maximum request body |

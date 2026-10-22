@@ -40,7 +40,7 @@ function highlight(code) {
   return out;
 }
 
-export default function CodeEditor({ value, onChange, onRun, disabled, fontSize = 15 }) {
+export default function CodeEditor({ value, onChange, onRun, disabled, fontSize = 15, placeholder }) {
   const input = useRef(null);
   const layer = useRef(null);
   const gutter = useRef(null);
@@ -100,6 +100,7 @@ export default function CodeEditor({ value, onChange, onRun, disabled, fontSize 
           aria-label="MongoDB query editor"
           className="code-input"
           value={value}
+          placeholder={placeholder}
           spellCheck={false}
           autoCapitalize="off"
           autoCorrect="off"

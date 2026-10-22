@@ -143,12 +143,15 @@ function studentRoutes(ctx) {
     const { name } = req.params;
     if (!PRACTICE_COLLECTIONS.includes(name)) throw badRequest('INVALID_COLLECTION', `Unknown collection '${name}'.`);
     const limit = Math.min(Number.parseInt(req.query.limit, 10) || 5, 50);
+    const skip = Math.min(Math.max(Number.parseInt(req.query.skip, 10) || 0, 0), 100000);
     const { db } = await workspaces.resolveDb(req.user.id);
-    const docs = await db.collection(name).find({}).limit(limit).toArray();
+    const docs = await db.collection(name).find({}).sort({ _id: 1 }).skip(skip).limit(limit).toArray();
     const total = await db.collection(name).countDocuments();
     res.json({
       collection: name,
       total,
+      skip,
+      limit,
       fields: describeFields(docs),
       documents: EJSON.serialize(docs, { relaxed: true }),
     });

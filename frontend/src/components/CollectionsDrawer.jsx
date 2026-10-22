@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { get } from '../api/client.js';
 import { DocumentsViewer, SchemaTable, ViewModeSwitch } from './MongoDocuments.jsx';
-import { ErrorAlert, Spinner } from './ui.jsx';
+import { ErrorAlert, PAGE_SIZE, Pagination, Spinner } from './ui.jsx';
 
 /**
  * "Show collections": browse the documents a question is asked about, straight from the
@@ -15,6 +15,7 @@ export default function CollectionsDrawer({ open, onToggle, collections, questio
   const [active, setActive] = useState(ordered[0]);
   const [view, setView] = useState('documents');
   const [mode, setMode] = useState('list');
+  const [page, setPage] = useState(0);
   const [state, setState] = useState({ loading: false, error: null, data: null });
   const cache = useRef(new Map());
 
@@ -22,18 +23,21 @@ export default function CollectionsDrawer({ open, onToggle, collections, questio
     if (questionCollection) setActive(questionCollection);
   }, [questionCollection]);
 
+  useEffect(() => setPage(0), [active]);
+
   useEffect(() => {
     if (!open || !ready || !active) return undefined;
     let cancelled = false;
-    const cached = cache.current.get(active);
+    const key = `${active}:${page}`;
+    const cached = cache.current.get(key);
     if (cached) {
       setState({ loading: false, error: null, data: cached });
       return undefined;
     }
     setState({ loading: true, error: null, data: null });
-    get(`/api/workspace/collections/${active}/sample?limit=20`)
+    get(`/api/workspace/collections/${active}/sample?limit=${PAGE_SIZE}&skip=${page * PAGE_SIZE}`)
       .then((data) => {
-        cache.current.set(active, data);
+        cache.current.set(key, data);
         if (!cancelled) setState({ loading: false, error: null, data });
       })
       .catch((error) => {
@@ -42,7 +46,7 @@ export default function CollectionsDrawer({ open, onToggle, collections, questio
     return () => {
       cancelled = true;
     };
-  }, [open, ready, active]);
+  }, [open, ready, active, page]);
 
   return (
     <>
@@ -105,9 +109,13 @@ export default function CollectionsDrawer({ open, onToggle, collections, questio
             <span className="spacer" />
             {state.data && view === 'documents' && (
               <>
-                <span className="muted small">
-                  1 – {state.data.documents.length} of {state.data.total}
-                </span>
+                {state.data.total > PAGE_SIZE ? (
+                  <Pagination page={page} total={state.data.total} onChange={setPage} />
+                ) : (
+                  <span className="muted small">
+                    {state.data.total ? 1 : 0} – {state.data.documents.length} of {state.data.total}
+                  </span>
+                )}
                 <ViewModeSwitch value={mode} onChange={setMode} />
               </>
             )}

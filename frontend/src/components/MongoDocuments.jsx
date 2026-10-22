@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import JsonView from './JsonView.jsx';
+import { PAGE_SIZE, Pagination } from './ui.jsx';
 
 /**
  * Documents rendered the way MongoDB Atlas' Data Explorer renders them: one bordered card per
@@ -182,6 +183,20 @@ export function ViewModeSwitch({ value, onChange }) {
         </button>
       ))}
     </div>
+  );
+}
+
+/** Query output split into pages of PAGE_SIZE, so a 500-document result stays readable. */
+export function PagedDocuments({ documents }) {
+  const [page, setPage] = useState(0);
+  useEffect(() => setPage(0), [documents]);
+  const visible = documents.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  return (
+    <>
+      <Pagination page={page} total={documents.length} onChange={setPage} />
+      <MongoDocuments documents={visible} />
+      <Pagination page={page} total={documents.length} onChange={setPage} />
+    </>
   );
 }
 
