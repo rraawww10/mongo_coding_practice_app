@@ -2,7 +2,11 @@
 
 const { getDataset, INDEXES, PRACTICE_COLLECTIONS } = require('./sampleData');
 const { randomPassword, encrypt } = require('../utils/crypto');
+const crypto = require('crypto');
 const logger = require('../utils/logger');
+
+/** Atlas shared and serverless tiers reject database names longer than 38 bytes. */
+const MAX_DB_NAME_LENGTH = 38;
 
 /**
  * Creates and resets practice databases. Runs with the *administrative* MongoDB identity;
@@ -141,10 +145,14 @@ class ProvisioningService {
     return { dbName: ws.dbName, collections: summary };
   }
 
-  /** Temporary database used to grade submissions without touching the student's workspace. */
+  /**
+   * Temporary database used to grade submissions without touching the student's workspace.
+   * The name is random rather than derived from `label` (which carries a 24-character user id)
+   * so that it stays within MAX_DB_NAME_LENGTH; `label` is only logged.
+   */
   async createSandbox(label) {
-    const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
-    const name = `${this.config.workspaceDbPrefix}eval_${label}_${suffix}`.slice(0, 63);
+    const name = `${this.config.workspaceDbPrefix}eval_${crypto.randomBytes(8).toString('hex')}`.slice(0, MAX_DB_NAME_LENGTH);
+    logger.debug('Creating grading sandbox', { dbName: name, label });
     const db = this.mongo.adminClient.db(name);
     const dataset = getDataset();
     await Promise.all(PRACTICE_COLLECTIONS.map((c) => db.collection(c).insertMany(dataset[c])));
@@ -152,4 +160,4 @@ class ProvisioningService {
   }
 }
 
-module.exports = { ProvisioningService };
+module.exports = { ProvisioningService, MAX_DB_NAME_LENGTH };
