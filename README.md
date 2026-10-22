@@ -12,7 +12,7 @@ still there for scripted administration (see [`docs/API.md`](docs/API.md)).
 * **Frontend:** React 18 + Vite — [`frontend/`](frontend/README.md)
 * **Backend:** Node.js + Express 5 + native MongoDB driver 7 — [`backend/`](backend/README.md)
 * **Local database:** a real `mongod`, started without Docker via `mongodb-memory-server`, *or* Docker Compose
-* **Tests:** 292 — Jest + Supertest (backend unit / integration / e2e), Vitest + Testing Library (frontend)
+* **Tests:** 296 — Jest + Supertest (backend unit / integration / e2e), Vitest + Testing Library (frontend)
 
 No Atlas account is needed to run, develop or test anything.
 

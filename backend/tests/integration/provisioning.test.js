@@ -181,6 +181,19 @@ describe('C. Database provisioning', () => {
     expect(capped.body.documents.length).toBeLessThanOrEqual(50);
   });
 
+  test('the collection browser pages through a collection with skip', async () => {
+    const s = await ctx.readyStudent('Pager');
+    const all = await ctx.api.get('/api/workspace/collections/products/sample?limit=50').set(s.auth);
+    const page2 = await ctx.api.get('/api/workspace/collections/products/sample?limit=5&skip=5').set(s.auth);
+    expect(page2.status).toBe(200);
+    expect(page2.body).toMatchObject({ skip: 5, limit: 5, total: all.body.total });
+    expect(page2.body.documents).toEqual(all.body.documents.slice(5, 10));
+    const past = await ctx.api.get('/api/workspace/collections/products/sample?limit=5&skip=9999').set(s.auth);
+    expect(past.body.documents).toEqual([]);
+    const negative = await ctx.api.get('/api/workspace/collections/products/sample?limit=5&skip=-3').set(s.auth);
+    expect(negative.body.skip).toBe(0);
+  });
+
   test('workspace must be initialized before querying', async () => {
     const s = await ctx.registerStudent('Fresh');
     await ctx.api.post('/api/connection').set(s.auth).send({ mode: 'local' });

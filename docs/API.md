@@ -33,7 +33,7 @@ Connection strings, database usernames and passwords are **never** returned by a
 | POST | `/api/workspace/ensure` | – | One-call bootstrap used by the IDE: connects to the local simulation when no connection exists and initializes the workspace when it is not ready. Idempotent — existing data is never overwritten. Atlas databases are reported, never written to without `confirm`. |
 | POST | `/api/workspace/initialize` | `{confirm?: boolean}` | Local: creates the private workspace database. Atlas: needs `confirm:true`, and only touches the five practice collections |
 | POST | `/api/workspace/reset` | – | Restores the original data (`403 RESET_NOT_ALLOWED` when the instructor has disabled self-reset) |
-| GET | `/api/workspace/collections/:name/sample?limit=5` | – | Documents of one practice collection (max 50) plus `fields[]` (`{name, types[]}`) for the schema view; powers *Show collections* in the IDE |
+| GET | `/api/workspace/collections/:name/sample?limit=5&skip=0` | – | One page of a practice collection, sorted by `_id` (`limit` max 50, `skip` ≥ 0) plus `total`, `skip`, `limit` plus `fields[]` (`{name, types[]}`) for the schema view; powers *Show collections* in the IDE |
 | POST | `/api/query/execute` | `{query, collection?, database?}` | Runs one validated query in the caller's own workspace (see below) |
 | GET | `/api/query/history` | – | Last 50 executions |
 | GET | `/api/questions` | – | Assigned questions without solutions, plus per-question progress |

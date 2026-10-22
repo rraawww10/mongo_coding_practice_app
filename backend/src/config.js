@@ -50,7 +50,7 @@ function loadConfig(overrides = {}) {
 
     requestBodyLimit: env.REQUEST_BODY_LIMIT || '16kb',
     queryMaxLength: int(env.QUERY_MAX_LENGTH, 4000),
-    queryMaxResults: int(env.QUERY_MAX_RESULTS, 100),
+    queryMaxResults: int(env.QUERY_MAX_RESULTS, 500),
     queryTimeoutMs: int(env.QUERY_TIMEOUT_MS, 3000),
     queryRateLimitPerMinute: int(env.QUERY_RATE_LIMIT_PER_MIN, 60),
     authRateLimitPerMinute: int(env.AUTH_RATE_LIMIT_PER_MIN, 30),
